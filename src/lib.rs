@@ -40,6 +40,7 @@ impl TryFrom<u16> for TxType {
 }
 
 #[derive(Serialize, Deserialize)]
+#[serde(bound = "")]
 pub struct TxData<E: Engine> {
     pub tx_type: TxType,
     pub proof: Proof<E>,
