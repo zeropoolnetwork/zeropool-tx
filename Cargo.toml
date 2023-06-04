@@ -11,5 +11,5 @@ fawkes-crypto = "4.4.0"
 serde = "1.0.163"
 
 [features]
-default = ["serde/std"]
+default = ["std"]
 std = ["serde/std"]
