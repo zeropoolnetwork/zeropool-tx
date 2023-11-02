@@ -1,6 +1,6 @@
 [package]
 name = "zeropool-tx"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 description = "ZeroPool transaction format"
 repository = "https://github.com/zeropoolnetwork/zeropool-tx"
