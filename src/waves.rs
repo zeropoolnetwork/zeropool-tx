@@ -1,4 +1,4 @@
-use std::io::{Error, ErrorKind, Read, Result, Write};
+use std::io::{Read, Result, Write};
 
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use fawkes_crypto::{backend::bellman_groth16::engines::Engine, ff_uint::Num};
