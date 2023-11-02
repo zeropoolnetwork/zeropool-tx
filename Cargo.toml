@@ -2,8 +2,9 @@
 name = "zeropool-tx"
 version = "0.1.0"
 edition = "2021"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+description = "ZeroPool transaction format"
+repository = "https://github.com/zeropoolnetwork/zeropool-tx"
+license = "MIT OR Apache-2.0"
 
 [dependencies]
 byteorder = "1.4.3"
