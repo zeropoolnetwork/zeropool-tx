@@ -1,9 +1,13 @@
 use std::fmt::Debug;
+
 use fawkes_crypto::{
-    backend::bellman_groth16::{engines::Engine, prover::Proof},
+    backend::bellman_groth16::{
+        engines::Engine,
+        group::{G1Point, G2Point},
+        prover::Proof,
+    },
     ff_uint::Num,
 };
-use fawkes_crypto::backend::bellman_groth16::group::{G1Point, G2Point};
 use serde::{Deserialize, Serialize};
 
 pub mod evm;
@@ -62,7 +66,10 @@ impl<'a, E: Engine> Debug for DebugProof<'a, E> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Proof")
             .field("a", &(self.0.a.0, self.0.a.1))
-            .field("b", &(self.0.b.0.0, self.0.b.0.1, self.0.b.1.0, self.0.b.1.1))
+            .field(
+                "b",
+                &(self.0.b.0 .0, self.0.b.0 .1, self.0.b.1 .0, self.0.b.1 .1),
+            )
             .field("c", &(self.0.c.0, self.0.c.1))
             .finish()
     }
@@ -109,3 +116,33 @@ impl<E: Engine> Clone for TxData<E> {
         }
     }
 }
+
+impl<E: Engine> PartialEq for TxData<E> {
+    fn eq(&self, other: &Self) -> bool {
+        self.tx_type == other.tx_type
+            && self.proof.a.0 == other.proof.a.0
+            && self.proof.a.1 == other.proof.a.1
+            && self.proof.b.0 .0 == other.proof.b.0 .0
+            && self.proof.b.0 .1 == other.proof.b.0 .1
+            && self.proof.b.1 .0 == other.proof.b.1 .0
+            && self.proof.b.1 .1 == other.proof.b.1 .1
+            && self.proof.c.0 == other.proof.c.0
+            && self.proof.c.1 == other.proof.c.1
+            && self.tree_proof.a.0 == other.tree_proof.a.0
+            && self.tree_proof.a.1 == other.tree_proof.a.1
+            && self.tree_proof.b.0 .0 == other.tree_proof.b.0 .0
+            && self.tree_proof.b.0 .1 == other.tree_proof.b.0 .1
+            && self.tree_proof.b.1 .0 == other.tree_proof.b.1 .0
+            && self.tree_proof.b.1 .1 == other.tree_proof.b.1 .1
+            && self.tree_proof.c.0 == other.tree_proof.c.0
+            && self.tree_proof.c.1 == other.tree_proof.c.1
+            && self.root_after == other.root_after
+            && self.delta == other.delta
+            && self.out_commit == other.out_commit
+            && self.nullifier == other.nullifier
+            && self.memo == other.memo
+            && self.extra_data == other.extra_data
+    }
+}
+
+impl<E: Engine> Eq for TxData<E> {}
