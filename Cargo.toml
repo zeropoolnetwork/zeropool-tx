@@ -1,6 +1,6 @@
 [package]
 name = "zeropool-tx"
-version = "0.1.1"
+version = "0.2.0"
 edition = "2021"
 description = "ZeroPool transaction format"
 repository = "https://github.com/zeropoolnetwork/zeropool-tx"
@@ -14,3 +14,6 @@ serde = "1.0.163"
 [features]
 default = ["std"]
 std = ["serde/std"]
+groth16 = ["fawkes-crypto/r1cs", "fawkes-crypto/backend_bellman_groth16"]
+plonk = ["fawkes-crypto/plonk"]
+

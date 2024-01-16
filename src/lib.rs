@@ -1,17 +1,13 @@
 use std::fmt::Debug;
 
-use fawkes_crypto::{
-    backend::bellman_groth16::{
-        engines::Engine,
-        group::{G1Point, G2Point},
-        prover::Proof,
-    },
-    ff_uint::Num,
-};
+use fawkes_crypto::ff_uint::{Num, PrimeField};
 use serde::{Deserialize, Serialize};
+
+use crate::proof::{DebugProof, Proof};
 
 pub mod evm;
 pub mod near;
+pub mod proof;
 pub mod substrate;
 mod utils;
 pub mod waves;
@@ -47,35 +43,20 @@ impl TryFrom<u16> for TxType {
 
 #[derive(Serialize, Deserialize)]
 #[serde(bound = "")]
-pub struct TxData<E: Engine> {
+pub struct TxData<Fr: PrimeField, P: Proof> {
     pub tx_type: TxType,
-    pub proof: Proof<E>,
-    pub tree_proof: Proof<E>,
-    pub root_after: Num<E::Fr>,
-    pub delta: Num<E::Fr>,
-    pub out_commit: Num<E::Fr>,
-    pub nullifier: Num<E::Fr>,
+    pub proof: P,
+    pub tree_proof: P,
+    pub root_after: Num<Fr>,
+    pub delta: Num<Fr>,
+    pub out_commit: Num<Fr>,
+    pub nullifier: Num<Fr>,
     pub memo: Vec<u8>,
     pub extra_data: Vec<u8>,
     pub token_id: String,
 }
 
-struct DebugProof<'a, E: Engine>(&'a Proof<E>);
-
-impl<'a, E: Engine> Debug for DebugProof<'a, E> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("Proof")
-            .field("a", &(self.0.a.0, self.0.a.1))
-            .field(
-                "b",
-                &(self.0.b.0 .0, self.0.b.0 .1, self.0.b.1 .0, self.0.b.1 .1),
-            )
-            .field("c", &(self.0.c.0, self.0.c.1))
-            .finish()
-    }
-}
-
-impl<E: Engine> Debug for TxData<E> {
+impl<Fr: PrimeField, P: Proof> Debug for TxData<Fr, P> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("TxData")
             .field("tx_type", &self.tx_type)
@@ -92,20 +73,12 @@ impl<E: Engine> Debug for TxData<E> {
     }
 }
 
-impl<E: Engine> Clone for TxData<E> {
+impl<Fr: PrimeField, P: Proof> Clone for TxData<Fr, P> {
     fn clone(&self) -> Self {
         Self {
             tx_type: self.tx_type,
-            proof: Proof {
-                a: G1Point(self.proof.a.0, self.proof.a.1),
-                b: G2Point(self.proof.b.0, self.proof.b.1),
-                c: G1Point(self.proof.c.0, self.proof.c.1),
-            },
-            tree_proof: Proof {
-                a: G1Point(self.tree_proof.a.0, self.tree_proof.a.1),
-                b: G2Point(self.tree_proof.b.0, self.tree_proof.b.1),
-                c: G1Point(self.tree_proof.c.0, self.tree_proof.c.1),
-            },
+            proof: self.proof.my_clone(),
+            tree_proof: self.tree_proof.my_clone(),
             root_after: self.root_after.clone(),
             delta: self.delta.clone(),
             out_commit: self.out_commit.clone(),
@@ -117,25 +90,11 @@ impl<E: Engine> Clone for TxData<E> {
     }
 }
 
-impl<E: Engine> PartialEq for TxData<E> {
+impl<Fr: PrimeField, P: Proof> PartialEq for TxData<Fr, P> {
     fn eq(&self, other: &Self) -> bool {
         self.tx_type == other.tx_type
-            && self.proof.a.0 == other.proof.a.0
-            && self.proof.a.1 == other.proof.a.1
-            && self.proof.b.0 .0 == other.proof.b.0 .0
-            && self.proof.b.0 .1 == other.proof.b.0 .1
-            && self.proof.b.1 .0 == other.proof.b.1 .0
-            && self.proof.b.1 .1 == other.proof.b.1 .1
-            && self.proof.c.0 == other.proof.c.0
-            && self.proof.c.1 == other.proof.c.1
-            && self.tree_proof.a.0 == other.tree_proof.a.0
-            && self.tree_proof.a.1 == other.tree_proof.a.1
-            && self.tree_proof.b.0 .0 == other.tree_proof.b.0 .0
-            && self.tree_proof.b.0 .1 == other.tree_proof.b.0 .1
-            && self.tree_proof.b.1 .0 == other.tree_proof.b.1 .0
-            && self.tree_proof.b.1 .1 == other.tree_proof.b.1 .1
-            && self.tree_proof.c.0 == other.tree_proof.c.0
-            && self.tree_proof.c.1 == other.tree_proof.c.1
+            && self.proof.my_eq(&other.proof)
+            && self.tree_proof.my_eq(&other.tree_proof)
             && self.root_after == other.root_after
             && self.delta == other.delta
             && self.out_commit == other.out_commit
@@ -145,4 +104,4 @@ impl<E: Engine> PartialEq for TxData<E> {
     }
 }
 
-impl<E: Engine> Eq for TxData<E> {}
+impl<Fr: PrimeField, P: Proof> Eq for TxData<Fr, P> {}

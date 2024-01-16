@@ -1,10 +1,11 @@
 use std::io::{Read, Result, Write};
 
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
-use fawkes_crypto::{backend::bellman_groth16::engines::Engine, ff_uint::Num};
+use fawkes_crypto::ff_uint::{Num, PrimeField};
 
 use crate::{
-    utils::{read_num, read_proof, write_num, write_proof},
+    proof::Proof,
+    utils::{read_num, write_num},
     TxData, TxType,
 };
 
@@ -24,14 +25,14 @@ use crate::{
 // # depositPk          optional 32 bytes
 // # depositSignature   optional 64 bytes
 
-pub fn read<R: Read, E: Engine>(r: &mut R) -> Result<TxData<E>> {
-    let nullifier = read_num::<BigEndian, _, E::Fr>(r)?;
-    let out_commit = read_num::<BigEndian, _, E::Fr>(r)?;
-    let _asset_id = read_num::<BigEndian, _, E::Fr>(r)?;
-    let delta = read_num::<BigEndian, _, E::Fr>(r)?;
-    let proof = read_proof::<BigEndian, _, E>(r)?;
-    let tree_proof = read_proof::<BigEndian, _, E>(r)?;
-    let root_after = read_num::<BigEndian, _, E::Fr>(r)?;
+pub fn read<R: Read, Fr: PrimeField, P: Proof>(r: &mut R) -> Result<TxData<Fr, P>> {
+    let nullifier = read_num::<BigEndian, _, Fr>(r)?;
+    let out_commit = read_num::<BigEndian, _, Fr>(r)?;
+    let _asset_id = read_num::<BigEndian, _, Fr>(r)?;
+    let delta = read_num::<BigEndian, _, Fr>(r)?;
+    let proof = P::read::<BigEndian, _>(r)?;
+    let tree_proof = P::read::<BigEndian, _>(r)?;
+    let root_after = read_num::<BigEndian, _, Fr>(r)?;
     let tx_type = r.read_u16::<BigEndian>()?;
 
     let tx_type = TxType::try_from(tx_type)?;
@@ -64,14 +65,14 @@ pub fn read<R: Read, E: Engine>(r: &mut R) -> Result<TxData<E>> {
     })
 }
 
-pub fn write<W: Write, E: Engine>(data: &TxData<E>, w: &mut W) -> Result<()> {
+pub fn write<W: Write, Fr: PrimeField, P: Proof>(data: &TxData<Fr, P>, w: &mut W) -> Result<()> {
     write_num::<BigEndian, _, _>(w, &data.nullifier)?;
-    write_num::<BigEndian, _, E::Fr>(w, &data.out_commit)?;
-    write_num::<BigEndian, _, E::Fr>(w, &Num::<E::Fr>::ZERO)?; // TODO: Change once support for different asset ids is added
-    write_num::<BigEndian, _, E::Fr>(w, &data.delta)?;
-    write_proof::<BigEndian, _, E>(w, &data.proof)?;
-    write_proof::<BigEndian, _, E>(w, &data.tree_proof)?;
-    write_num::<BigEndian, _, E::Fr>(w, &data.root_after)?;
+    write_num::<BigEndian, _, Fr>(w, &data.out_commit)?;
+    write_num::<BigEndian, _, Fr>(w, &Num::<Fr>::ZERO)?; // TODO: Change once support for different asset ids is added
+    write_num::<BigEndian, _, Fr>(w, &data.delta)?;
+    data.proof.write::<BigEndian, _>(w)?;
+    data.tree_proof.write::<BigEndian, _>(w)?;
+    write_num::<BigEndian, _, Fr>(w, &data.root_after)?;
     w.write_u16::<BigEndian>(data.tx_type as u16)?;
     w.write_all(&data.memo)?;
     w.write_all(&data.extra_data)?;

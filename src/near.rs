@@ -1,21 +1,22 @@
 use std::io::{Error, ErrorKind, Read, Result, Write};
 
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
-use fawkes_crypto::{backend::bellman_groth16::engines::Engine, ff_uint::Num};
+use fawkes_crypto::ff_uint::{Num, PrimeField};
 
 use crate::{
-    utils::{read_num, read_proof, write_num, write_proof},
+    proof::Proof,
+    utils::{read_num, write_num},
     TxData, TxType,
 };
 
-pub fn read<R: Read, E: Engine>(r: &mut R) -> Result<TxData<E>> {
-    let nullifier = read_num::<LittleEndian, _, E::Fr>(r)?;
-    let out_commit = read_num::<LittleEndian, _, E::Fr>(r)?;
+pub fn read<R: Read, Fr: PrimeField, P: Proof>(r: &mut R) -> Result<TxData<Fr, P>> {
+    let nullifier = read_num::<LittleEndian, _, Fr>(r)?;
+    let out_commit = read_num::<LittleEndian, _, Fr>(r)?;
     let token_id = read_borsh_string(r)?;
-    let delta = read_num::<LittleEndian, _, E::Fr>(r)?;
-    let tx_proof = read_proof::<LittleEndian, _, E>(r)?;
-    let root_after = read_num::<LittleEndian, _, E::Fr>(r)?;
-    let tree_proof = read_proof::<LittleEndian, _, E>(r)?;
+    let delta = read_num::<LittleEndian, _, Fr>(r)?;
+    let tx_proof = P::read::<LittleEndian, _>(r)?;
+    let root_after = read_num::<LittleEndian, _, Fr>(r)?;
+    let tree_proof = P::read::<LittleEndian, _>(r)?;
     let tx_type = r.read_u8()?;
 
     let tx_type = TxType::try_from(tx_type as u16)?;
@@ -38,17 +39,17 @@ pub fn read<R: Read, E: Engine>(r: &mut R) -> Result<TxData<E>> {
     })
 }
 
-pub fn write<W: Write, E: Engine>(data: &TxData<E>, w: &mut W) -> Result<()> {
+pub fn write<W: Write, Fr: PrimeField, P: Proof>(data: &TxData<Fr, P>, w: &mut W) -> Result<()> {
     let mut buf = vec![];
 
     write_num::<LittleEndian, _, _>(w, &data.nullifier)?;
-    write_num::<LittleEndian, _, E::Fr>(w, &data.out_commit)?;
+    write_num::<LittleEndian, _, Fr>(w, &data.out_commit)?;
     write_borsh_string(w, &data.token_id)?;
-    write_num::<LittleEndian, _, E::Fr>(w, &Num::<E::Fr>::ZERO)?; // TODO: Change once support for different asset ids is added
-    write_num::<LittleEndian, _, E::Fr>(w, &data.delta)?;
-    write_proof::<LittleEndian, _, E>(w, &data.proof)?;
-    write_num::<LittleEndian, _, E::Fr>(w, &data.root_after)?;
-    write_proof::<LittleEndian, _, E>(w, &data.tree_proof)?;
+    write_num::<LittleEndian, _, Fr>(w, &Num::<Fr>::ZERO)?; // TODO: Change once support for different asset ids is added
+    write_num::<LittleEndian, _, Fr>(w, &data.delta)?;
+    data.proof.write::<LittleEndian, _>(w)?;
+    write_num::<LittleEndian, _, Fr>(w, &data.root_after)?;
+    data.tree_proof.write::<LittleEndian, _>(w)?;
     buf.write_u8(data.tx_type as u8)?;
     write_borsh_array(w, &data.memo)?;
     buf.write_all(&data.extra_data)?;

@@ -1,16 +1,17 @@
 use std::io::{Error, ErrorKind, Read, Result, Write};
 
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
-use fawkes_crypto::backend::bellman_groth16::engines::Engine;
+use fawkes_crypto::ff_uint::PrimeField;
 
 use crate::{
-    utils::{read_num, read_proof, write_num, write_proof},
+    proof::Proof,
+    utils::{read_num, write_num},
     TxData, TxType,
 };
 
 const SELECTOR: &[u8] = &[0x8a, 0x40, 0x68, 0xdd];
 
-pub fn read<R: Read, E: Engine>(r: &mut R) -> Result<TxData<E>> {
+pub fn read<R: Read, Fr: PrimeField, P: Proof>(r: &mut R) -> Result<TxData<Fr, P>> {
     let mut selector = [0u8; 4];
     r.read_exact(&mut selector)?;
 
@@ -18,12 +19,12 @@ pub fn read<R: Read, E: Engine>(r: &mut R) -> Result<TxData<E>> {
         return Err(Error::new(ErrorKind::InvalidData, "invalid selector"));
     }
 
-    let nullifier = read_num::<BigEndian, _, E::Fr>(r)?;
-    let out_commit = read_num::<BigEndian, _, E::Fr>(r)?;
-    let delta = read_num::<BigEndian, _, E::Fr>(r)?;
-    let proof = read_proof::<BigEndian, _, E>(r)?;
-    let root_after = read_num::<BigEndian, _, E::Fr>(r)?;
-    let tree_proof = read_proof::<BigEndian, _, E>(r)?;
+    let nullifier = read_num::<BigEndian, _, Fr>(r)?;
+    let out_commit = read_num::<BigEndian, _, Fr>(r)?;
+    let delta = read_num::<BigEndian, _, Fr>(r)?;
+    let proof = P::read::<BigEndian, _>(r)?;
+    let root_after = read_num::<BigEndian, _, Fr>(r)?;
+    let tree_proof = P::read::<BigEndian, _>(r)?;
     let tx_type = r.read_u16::<BigEndian>()?;
     let memo_len = r.read_u16::<BigEndian>()?;
     let mut memo = vec![0u8; memo_len as usize];
@@ -47,14 +48,14 @@ pub fn read<R: Read, E: Engine>(r: &mut R) -> Result<TxData<E>> {
     })
 }
 
-pub fn write<W: Write, E: Engine>(data: &TxData<E>, w: &mut W) -> Result<()> {
+pub fn write<W: Write, Fr: PrimeField, P: Proof>(data: &TxData<Fr, P>, w: &mut W) -> Result<()> {
     w.write_all(SELECTOR)?;
-    write_num::<BigEndian, _, E::Fr>(w, &data.nullifier)?;
-    write_num::<BigEndian, _, E::Fr>(w, &data.out_commit)?;
-    write_num::<BigEndian, _, E::Fr>(w, &data.delta)?;
-    write_proof::<BigEndian, _, E>(w, &data.proof)?;
-    write_num::<BigEndian, _, E::Fr>(w, &data.root_after)?;
-    write_proof::<BigEndian, _, E>(w, &data.tree_proof)?;
+    write_num::<BigEndian, _, Fr>(w, &data.nullifier)?;
+    write_num::<BigEndian, _, Fr>(w, &data.out_commit)?;
+    write_num::<BigEndian, _, Fr>(w, &data.delta)?;
+    data.proof.write::<BigEndian, _>(w)?;
+    write_num::<BigEndian, _, Fr>(w, &data.root_after)?;
+    data.tree_proof.write::<BigEndian, _>(w)?;
     w.write_u16::<BigEndian>(data.tx_type as u16)?;
     w.write_u16::<BigEndian>(data.memo.len() as u16)?;
     w.write_all(&data.memo)?;
