@@ -8,7 +8,7 @@ license = "MIT OR Apache-2.0"
 
 [dependencies]
 byteorder = "1.4.3"
-fawkes-crypto = "4.4.0"
+fawkes-crypto = { version = "4.4.0", default-features = false, features = ["serde_support", "borsh_support"] } # TODO: upgrade to latest version with plonk support
 serde = "1.0.163"
 
 [features]
