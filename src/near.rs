@@ -45,7 +45,6 @@ pub fn write<W: Write, Fr: PrimeField, P: Proof>(data: &TxData<Fr, P>, w: &mut W
     write_num::<LittleEndian, _, _>(w, &data.nullifier)?;
     write_num::<LittleEndian, _, Fr>(w, &data.out_commit)?;
     write_borsh_string(w, &data.token_id)?;
-    write_num::<LittleEndian, _, Fr>(w, &Num::<Fr>::ZERO)?; // TODO: Change once support for different asset ids is added
     write_num::<LittleEndian, _, Fr>(w, &data.delta)?;
     data.proof.write::<LittleEndian, _>(w)?;
     write_num::<LittleEndian, _, Fr>(w, &data.root_after)?;
