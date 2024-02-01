@@ -9,6 +9,19 @@ use crate::{
     TxData, TxType,
 };
 
+// pub struct Tx {
+//     pub nullifier: U256,
+//     pub out_commit: U256,
+//     pub token_id: String,
+//     pub delta: U256,
+//     pub transact_proof: Vec<u8>,
+//     pub root_after: U256,
+//     pub tree_proof: Vec<u8>,
+//     pub tx_type: TxType,
+//     pub memo: Memo,
+//     pub deposit_data: OptDepositData,
+// }
+
 pub fn read<R: Read, Fr: PrimeField, P: Proof>(r: &mut R) -> Result<TxData<Fr, P>> {
     let nullifier = read_num::<LittleEndian, _, Fr>(r)?;
     let out_commit = read_num::<LittleEndian, _, Fr>(r)?;
@@ -40,8 +53,6 @@ pub fn read<R: Read, Fr: PrimeField, P: Proof>(r: &mut R) -> Result<TxData<Fr, P
 }
 
 pub fn write<W: Write, Fr: PrimeField, P: Proof>(data: &TxData<Fr, P>, w: &mut W) -> Result<()> {
-    let mut buf = vec![];
-
     write_num::<LittleEndian, _, _>(w, &data.nullifier)?;
     write_num::<LittleEndian, _, Fr>(w, &data.out_commit)?;
     write_borsh_string(w, &data.token_id)?;
@@ -49,9 +60,9 @@ pub fn write<W: Write, Fr: PrimeField, P: Proof>(data: &TxData<Fr, P>, w: &mut W
     data.proof.write::<LittleEndian, _>(w)?;
     write_num::<LittleEndian, _, Fr>(w, &data.root_after)?;
     data.tree_proof.write::<LittleEndian, _>(w)?;
-    buf.write_u8(data.tx_type as u8)?;
+    w.write_u8(data.tx_type as u8)?;
     write_borsh_array(w, &data.memo)?;
-    buf.write_all(&data.extra_data)?;
+    w.write_all(&data.extra_data)?;
 
     Ok(())
 }
